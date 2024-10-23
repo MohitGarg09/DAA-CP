@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PTAS, FPTAS Knapsack & Euclidean TSP Visualization</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f4f4f9;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    h1 {
+      margin-top: 30px;
+      font-size: 28px;
+      color: #333;
+    }
+
+    .content {
+      width: 90%;
+      max-width: 1200px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+
+    .chart-container, .canvas-container {
+      background-color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+      width: 48%;
+      min-height: 400px;
+    }
+
+    .tsp-container {
+      width: 100%;
+    }
+
+    canvas {
+      background: #f9f9f9;
+    }
+
+    .sliderContainer {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .sliderContainer input {
+      width: 80%;
+    }
+
+    p {
+      font-size: 16px;
+      color: #333;
+    }
+
+    ul {
+      font-size: 16px;
+      margin-top: 10px;
+    }
+
+    ul li {
+      margin-bottom: 5px;
+    }
+
+    @media(max-width: 768px) {
+      .chart-container, .canvas-container {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<h1>Knapsack PTAS, FPTAS & Euclidean TSP Visualization</h1>
+
+<div class="content">
+  <!-- Knapsack PTAS Chart -->
+  <div class="chart-container">
+    <canvas id="knapsackPTASChart"></canvas>
+    <div class="sliderContainer">
+      <label for="ptasValueSlider">Adjust PTAS Item Value: <span id="ptasValue">100</span></label>
+      <input type="range" id="ptasValueSlider" min="50" max="150" value="100">
+    </div>
+  </div>
+
+  <!-- Knapsack FPTAS Chart -->
+  <div class="chart-container">
+    <canvas id="knapsackFPTASChart"></canvas>
+    <div class="sliderContainer">
+      <label for="epsilonSlider">Adjust Epsilon: <span id="epsilonValue">0.1</span></label>
+      <input type="range" id="epsilonSlider" min="0.01" max="1" step="0.01" value="0.1">
+    </div>
+  </div>
+</div>
+
+<!-- TSP Section with Slider -->
+<div class="tsp-container canvas-container">
+  <canvas id="tspCanvas" width="600" height="400"></canvas>
+  <div class="sliderContainer">
+    <label for="pointSlider">Number of Points: <span id="pointValue">5</span></label>
+    <input type="range" id="pointSlider" min="3" max="15" value="5">
+  </div>
+</div>
+
+<!-- Description Section -->
+<div>
+  <p><strong>Knapsack Problem Details:</strong></p>
+  <ul>
+    <li>PTAS and FPTAS are approximation schemes for solving the Knapsack problem.</li>
+    <li>The PTAS provides a polynomial-time approximation scheme for maximizing value with given weights.</li>
+    <li>The FPTAS scales down the values to ensure efficient computation while maintaining approximate solutions.</li>
+    <li>Use the sliders to adjust item values and epsilon dynamically for both PTAS and FPTAS charts.</li>
+  </ul>
+</div>
+
+<div>
+  <p><strong>Euclidean TSP Details:</strong></p>
+  <ul>
+    <li>We are solving the Traveling Salesman Problem (TSP) using a **Nearest Neighbor Heuristic**.</li>
+    <li>The points represent cities, and the tour connects them to minimize the total distance.</li>
+    <li>Use the slider to adjust the number of points and visualize how the nearest neighbor solution adapts.</li>
+    <li>The final tour returns to the starting city, forming a closed loop.</li>
+  </ul>
+</div>
+
+<!-- Importing Chart.js library for visualization -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  /***** Knapsack PTAS and FPTAS Section *****/
+
+  let knapsackItems = [
+    { value: 100, weight: 4 },
+    { value: 99, weight: 4 },
+    { value: 95, weight: 3 },
+    { value: 60, weight: 2 }
+  ];
+  const knapsackCapacity = 8;
+  
+  // Function to scale knapsack values for FPTAS
+  function scaleKnapsackValues(items, epsilon) {
+    let maxValue = Math.max(...items.map(item => item.value));
+    let scalingFactor = epsilon * maxValue / (2 * items.length);
+
+    return items.map(item => ({
+      value: Math.floor(item.value / scalingFactor),
+      weight: item.weight
+    }));
+  }
+
+  // Create a chart for Knapsack problems
+  function createKnapsackChart(canvasId, title, items) {
+    const chartData = {
+      labels: items.map((_, index) => `Item ${index + 1}`),
+      datasets: [{
+        label: 'Value',
+        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 1,
+        data: items.map(item => item.value)
+      }, {
+        label: 'Weight',
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        borderColor: 'rgba(255, 99, 132, 1)',
+        borderWidth: 1,
+        data: items.map(item => item.weight)
+      }]
+    };
+
+    const chartConfig = {
+      type: 'bar',
+      data: chartData,
+      options: {
+        responsive: true,
+        scales: {
+          y: { beginAtZero: true }
+        },
+        plugins: {
+          title: {
+            display: true,
+            text: title
+          }
+        }
+      }
+    };
+
+    return new Chart(document.getElementById(canvasId), chartConfig);
+  }
+
+  // Initialize PTAS chart
+  let ptasChart = createKnapsackChart('knapsackPTASChart', 'PTAS Knapsack Results', knapsackItems);
+  
+  // Initialize FPTAS chart with epsilon 0.1
+  let epsilon = 0.1;
+  let fptasItems = scaleKnapsackValues(knapsackItems, epsilon);
+  let fptasChart = createKnapsackChart('knapsackFPTASChart', 'FPTAS Knapsack Results', fptasItems);
+
+  // Slider logic for PTAS chart
+  const ptasValueSlider = document.getElementById('ptasValueSlider');
+  const ptasValueDisplay = document.getElementById('ptasValue');
+
+  ptasValueSlider.addEventListener('input', function() {
+    const newValue = parseInt(this.value);
+    ptasValueDisplay.textContent = newValue;
+    
+    // Update the values of knapsack items
+    knapsackItems.forEach(item => item.value = newValue);
+    
+    // Update the PTAS chart
+    ptasChart.data.datasets[0].data = knapsackItems.map(item => item.value);
+    ptasChart.update();
+    
+    // Update the FPTAS chart
+    fptasItems = scaleKnapsackValues(knapsackItems, epsilon);
+    fptasChart.data.datasets[0].data = fptasItems.map(item => item.value);
+    fptasChart.update();
+  });
+
+  // Slider logic for FPTAS chart with epsilon
+  const epsilonSlider = document.getElementById('epsilonSlider');
+  const epsilonValueDisplay = document.getElementById('epsilonValue');
+
+  epsilonSlider.addEventListener('input', function() {
+    epsilon = parseFloat(this.value);
+    epsilonValueDisplay.textContent = epsilon.toFixed(2);
+    
+    // Update the FPTAS chart
+    fptasItems = scaleKnapsackValues(knapsackItems, epsilon);
+    fptasChart.data.datasets[0].data = fptasItems.map(item => item.value);
+    fptasChart.update();
+  });
+
+  /***** Traveling Salesman Problem Section *****/
+  
+  // Generate random points
+  function generatePoints(numPoints) {
+    const points = [];
+    for (let i = 0; i < numPoints; i++) {
+      points.push({ x: Math.random() * 600, y: Math.random() * 400 });
+    }
+    return points;
+  }
+
+  // Calculate distance between two points
+  function distance(p1, p2) {
+    return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+  }
+
+  // Nearest Neighbor heuristic for TSP
+  function nearestNeighborTour(points) {
+    const tour = [points[0]];
+    const visited = new Set([0]);
+    let currentIndex = 0;
+
+    while (visited.size < points.length) {
+      let nearestIndex = -1;
+      let nearestDist = Infinity;
+
+      for (let i = 0; i < points.length; i++) {
+        if (!visited.has(i)) {
+          const dist = distance(points[currentIndex], points[i]);
+          if (dist < nearestDist) {
+            nearestDist = dist;
+            nearestIndex = i;
+          }
+        }
+      }
+
+      visited.add(nearestIndex);
+      tour.push(points[nearestIndex]);
+      currentIndex = nearestIndex;
+    }
+
+    return tour;
+  }
+
+  // Draw TSP on canvas
+  function drawTSP(canvas, points) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const tour = nearestNeighborTour(points);
+    
+    ctx.beginPath();
+    ctx.moveTo(tour[0].x, tour[0].y);
+    for (const point of tour) {
+      ctx.lineTo(point.x, point.y);
+    }
+    ctx.lineTo(tour[0].x, tour[0].y); // Return to start
+    ctx.strokeStyle = 'blue';
+    ctx.stroke();
+
+    // Draw points
+    ctx.fillStyle = 'red';
+    for (const point of points) {
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Initial points and drawing
+  let points = generatePoints(5);
+  const tspCanvas = document.getElementById('tspCanvas');
+  drawTSP(tspCanvas, points);
+
+  // Slider logic to dynamically change points and update the tour
+  const pointSlider = document.getElementById('pointSlider');
+  const pointValueDisplay = document.getElementById('pointValue');
+
+  pointSlider.addEventListener('input', function() {
+    const numPoints = parseInt(this.value);
+    pointValueDisplay.textContent = numPoints;
+    points = generatePoints(numPoints);
+    drawTSP(tspCanvas, points);
+  });
+</script>
+</body>
+</html>
